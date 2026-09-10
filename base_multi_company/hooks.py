@@ -13,19 +13,19 @@ def set_security_rule(env, rule_ref):
     """Set the condition for multi-company in the security rule.
 
     :param: env: Environment
-    :param: rule_ref: XML-ID of the security rule to change.
+    :param: rule_ref: XML-ID of the `ir.access` record to change.
     """
     warnings.warn(
         "This hook is deprecated. Use `fill_company_ids` instead.",
         DeprecationWarning,
         stacklevel=2,
     )
-    rule = env.ref(rule_ref)
-    if rule:  # safeguard if it's deleted
-        rule.write(
+    access = env.ref(rule_ref)
+    if access:  # safeguard if it's deleted
+        access.write(
             {
                 "active": True,
-                "domain_force": (
+                "domain": (
                     "['|', ('company_ids', '=', False),"
                     " ('company_ids', 'in', company_ids)]"
                 ),
@@ -34,12 +34,12 @@ def set_security_rule(env, rule_ref):
 
 
 def post_init_hook(env, rule_ref, model_name):
-    """Set the `domain_force` and default `company_ids` to `company_id`.
+    """Set the `domain` and default `company_ids` to `company_id`.
 
     Args:
         env (Environment): Environment to use for operation.
-        rule_ref (string): XML ID of security rule to write the
-            `domain_force` from.
+        rule_ref (string): XML ID of the `ir.access` record to write the
+            `domain` from.
         model_name (string): Name of Odoo model object to search for
             existing records.
     """
@@ -68,8 +68,8 @@ def uninstall_hook(env, rule_ref):
 
     Args:
         env (Environment): Environment to use for operation.
-        rule_ref (string): XML ID of security rule to remove the
-            `domain_force` from.
+        rule_ref (string): XML ID of the `ir.access` record to remove the
+            `domain` from.
     """
     warnings.warn(
         "This hook is deprecated.",
@@ -77,12 +77,12 @@ def uninstall_hook(env, rule_ref):
         stacklevel=2,
     )
     # Change access rule
-    rule = env.ref(rule_ref)
-    if rule:  # safeguard if it's deleted
-        rule.write(
+    access = env.ref(rule_ref)
+    if access:  # safeguard if it's deleted
+        access.write(
             {
                 "active": False,
-                "domain_force": (
+                "domain": (
                     " ['|', ('company_ids', '=', False),"
                     " ('company_ids', 'in', company_ids)]"
                 ),
