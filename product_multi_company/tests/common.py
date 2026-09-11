@@ -12,13 +12,23 @@ class ProductMultiCompanyCommon:
                 "name": "Product without company",
             }
         )
-        cls.product_company_1 = cls.product_obj.with_company(cls.company_1).create(
+        # `with_context(allowed_company_ids=...)` instead of `with_company()`:
+        # the latter keeps every other company the admin can access trailing
+        # in the context, which then leaks into any later `with_user()` on
+        # these records and makes env.company reject users scoped to a
+        # single company (v20 validates the whole allowed_company_ids list,
+        # not just the active one).
+        cls.product_company_1 = cls.product_obj.with_context(
+            allowed_company_ids=cls.company_1.ids
+        ).create(
             {
                 "name": "Product from company 1",
                 "company_ids": [(6, 0, cls.company_1.ids)],
             }
         )
-        cls.product_company_2 = cls.product_obj.with_company(cls.company_2).create(
+        cls.product_company_2 = cls.product_obj.with_context(
+            allowed_company_ids=cls.company_2.ids
+        ).create(
             {
                 "name": "Product from company 2",
                 "company_ids": [(6, 0, cls.company_2.ids)],
