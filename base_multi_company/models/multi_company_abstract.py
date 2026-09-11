@@ -20,8 +20,6 @@ class MultiCompanyAbstract(models.AbstractModel):
     company_ids = fields.Many2many(
         string="Companies",
         comodel_name="res.company",
-        # avoid cache pollution in sudo / non-sudo uses of the field
-        depends_context=("uid",),
     )
 
     @api.depends("company_ids")
@@ -102,7 +100,13 @@ class MultiCompanyAbstract(models.AbstractModel):
                 if company_id:
                     vals["company_ids"] = [fields.Command.link(company_id)]
             self._multicompany_patch_vals(vals)
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        if any("company_ids" in vals for vals in vals_list):
+            # Creating with sudo/non-sudo won't populate the other cache (and
+            # vice versa) so we invalidate to ensure every user reads the
+            # up-to-date value.
+            records.invalidate_recordset(fnames=["company_ids"])
+        return records
 
     def write(self, vals):
         """Discard changes in company_id field if company_ids has been given."""

@@ -10,13 +10,14 @@ class TestHooks(common.TransactionCase):
     def test_post_init_and_uninstall_hooks(self):
         """Ensure hooks apply."""
 
-        rule = self.env["ir.rule"].create(
+        access = self.env["ir.access"].create(
             {
                 "name": "Test Multi Company Rule",
                 "model_id": self.env["ir.model"]
                 .search([("model", "=", "res.users")])
                 .id,
-                "domain_force": "[(1, '=', 1)]",
+                "operation": "crud",
+                "domain": "[(1, '=', 1)]",
             }
         )
 
@@ -24,8 +25,8 @@ class TestHooks(common.TransactionCase):
             {
                 "name": "test_dummy_rule",
                 "module": "base_multi_company_test",
-                "model": "ir.rule",
-                "res_id": rule.id,
+                "model": "ir.access",
+                "res_id": access.id,
             }
         )
         rule_ref = "base_multi_company_test.test_dummy_rule"
@@ -33,11 +34,11 @@ class TestHooks(common.TransactionCase):
         with self.assertWarns(DeprecationWarning):
             post_init_hook(self.env, rule_ref, "res.users")
 
-        self.assertTrue(rule.active)
-        self.assertIn("company_ids", rule.domain_force)
+        self.assertTrue(access.active)
+        self.assertIn("company_ids", access.domain)
 
         with self.assertWarns(DeprecationWarning):
             uninstall_hook(self.env, rule_ref)
 
-        self.assertFalse(rule.active)
-        self.assertIn("company_ids", rule.domain_force)
+        self.assertFalse(access.active)
+        self.assertIn("company_ids", access.domain)

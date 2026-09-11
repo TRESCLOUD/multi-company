@@ -3,7 +3,6 @@
 # License LGPL-3 - See http://www.gnu.org/licenses/lgpl-3.0.html
 
 
-from odoo.fields import Command
 from odoo.orm.model_classes import add_to_registry
 from odoo.tests import common
 
@@ -29,14 +28,12 @@ class TestMultiCompanyAbstract(common.TransactionCase):
         )
 
         # Access record:
-        cls.env["ir.model.access"].create(
+        cls.env["ir.access"].create(
             {
                 "name": "access.tester",
                 "model_id": cls.tester_model.id,
-                "perm_read": 1,
-                "perm_write": 1,
-                "perm_create": 1,
-                "perm_unlink": 1,
+                "group_id": cls.env.ref("base.group_user").id,
+                "operation": "crud",
             }
         )
 
@@ -173,11 +170,15 @@ class TestMultiCompanyAbstract(common.TransactionCase):
             }
         )
         companies = company2 + company3
-        tester.write({"company_ids": [(6, False, companies.ids)]})
+        # Written with sudo: "user" no longer has company2 among its own
+        # allowed companies (base.res_company_rule_public restricts reading a
+        # company to those in the acting user's own company_ids), and reading
+        # it is required to link it here; this is orthogonal to what the test
+        # verifies (the company_id fallback compute below).
+        tester.sudo().write({"company_ids": [(6, False, companies.ids)]})
         # Force recompute
         tester.invalidate_model(["company_id"])
         # Is not subset
-        # Fetch it with the admin user cause company_ids is uid context dependent
         admin = self.env.user
         self.assertFalse(tester.with_user(admin).company_ids <= user.company_ids)
         self.assertNotEqual(tester.company_id.id, user.company_id.id)
@@ -311,15 +312,14 @@ class TestMultiCompanyAbstract(common.TransactionCase):
         self.assertFalse(tester.sudo().company_ids)
 
     def test_rule_in_false(self):
-        # Create an ir.rule imitating base.res_partner_rule
-        self.env["ir.rule"].create(
+        # Create an ir.access record rule imitating base.res_partner_rule
+        self.env["ir.access"].create(
             {
                 "name": "Test rule",
                 "model_id": self.tester_model.id,
-                "domain_force": repr(
-                    [("company_id", "in", [False, self.company_1.id])]
-                ),
-                "groups": [Command.link(self.ref("base.group_user"))],
+                "group_id": self.ref("base.group_user"),
+                "operation": "crud",
+                "domain": repr([("company_id", "in", [False, self.company_1.id])]),
             }
         )
         user = common.new_test_user(
